@@ -1,0 +1,13 @@
+// Constant iso values from one image to another
+int ni = 21;
+int mi = 21;
+real[int] ui(mi);
+real[int] vi(ni);
+for (int it=0; it<= ni - 1; it++)
+{
+	for (int j=0; j<= mi - 1; j++)
+	{
+		ui[j] = 0.05*j;
+	vi[it] = 0.1*it;//vi[it] = 0.18*it; best 
+	}
+}

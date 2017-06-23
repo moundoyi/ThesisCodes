@@ -1,0 +1,70 @@
+// Fichiers auxiliaires
+
+// Fixing parameters
+int nombredepas  = 50;
+real h = 40;
+real T = 5., dt = T/nombredepas, unsurdt = 1./dt;
+real d = 1.5,  mu = 3.;
+real r = 1.,  e  = r/20.;
+real eps = 0.1;// 0.7 best
+border Bigcircle(t=0,2*pi){x=(r+e)*cos(t);y=(r+e)*sin(t);label=1;};
+border Smallcircle(t=0,2*pi){x=r*cos(t);y=r*sin(t);label=2;};
+mesh Ring =buildmesh(Bigcircle(500)+Smallcircle(-300));
+mesh UnitDisk =buildmesh(Smallcircle(300));
+mesh mixte = Ring + UnitDisk;
+
+plot(mixte, wait=1);
+fespace Vh(Ring,P2);
+
+
+func real u0 (real x, real y)
+{
+	real theta = atan2(y,x)	;
+	if (theta >= 0 && theta <= pi/h && x>1.) return 1.;
+	else return 0.;
+}
+
+func v0 = 0.;
+macro Grad(func) [dx(func),dy(func)]//
+
+// 1st equation of the system
+Vh up = u0(x,y), phi, u, f;
+u = up;
+problem heat1(u, phi) =
+			int2d(Ring)   ( unsurdt*u*phi  + mu*Grad(u)'*Grad(phi) )
+			- int2d(Ring) ( unsurdt*up*phi + f*phi )
+			//+ on(c1,c1e,u=1.)
+;
+
+// 2nd equation of the system
+Vh v, psi, vp, g;
+vp = v0;
+v=vp;
+problem heat2(v, psi) =
+			int2d(UnitDisk)( unsurdt*v*psi  + mu*Grad(v)'*Grad(psi) )
+			- int1d(UnitDisk) ( up*psi )
+			- int2d(UnitDisk) ( unsurdt*vp*psi + g*psi )
+;
+string sortie,fichier="fig";
+sortie=fichier+"mesh.eps";plot(mixte,wait=0,ps=sortie);
+// Time loop
+for (int it=0; it<= nombredepas; it++)
+{
+        cout <<"----"<<endl;
+        cout <<"  Debut de la "<<it<<"e iteration"<<endl;
+        // Solve system
+        f = u*(1-u)*(u-0.139)-u*v;
+        g = 0.008*(u-d*v);
+	plot(u,v,wait=0, fill=1, dim=2, value=1,ps="res"+it+".eps");
+	//, cmm="u   and   v   at   t = "+it
+        heat1;
+        heat2;
+        // Print values of u and v
+        //cout <<"  Fin de la "<<it<<"e iteration"<<endl;
+        //cout <<"  u varie entre "<<u[].min<<" et "<<u[].max<<endl;
+        //cout <<"  v varie entre "<<v[].min<<" et "<<v[].max<<endl;
+        //plot(u,v,wait=0, fill=1, dim=2, value=1, cmm="u and v at t="+it,ps="res"+it+".eps",nbiso=ni,hsv=colormapHSVjet,viso=vi);
+        // Swap values for the next iteratio
+        up[] = u[];
+        vp[] = v[];
+}

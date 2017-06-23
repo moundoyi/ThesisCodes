@@ -1,0 +1,170 @@
+// Fichiers auxiliaires
+load "Element_P3"
+load "iovtk"
+real[int] colormapHSVjet = [
+     0.6667,    1.0000,    0.5625,
+     0.6667,    1.0000,    0.6250,
+     0.6667,    1.0000,    0.7075,
+     0.6667,    1.0000,    0.9050,
+     0.6563,    1.0000,    1.0000,
+     0.6458,    1.0000,    1.0000,
+     0.6354,    1.0000,    1.0000,
+     0.6250,    1.0000,    1.0000,
+     0.6042,    1.0000,    1.0000,
+     0.5833,    1.0000,    1.0000,
+     0.5625,    1.0000,    1.0000,
+     0.5417,    1.0000,    1.0000,
+     0.5208,    1.0000,    1.0000,
+     0.5000,    1.0000,    1.0000,
+     0.4889,    0.9375,    1.0000,
+     0.4615,    0.8125,    1.0000,
+     0.4444,    0.7500,    1.0000,
+     0.4242,    0.6875,    1.0000,
+     0.3800,    0.6250,    1.0000,
+     0.3033,    0.5000,    1.0000,
+     0.2667,    0.6250,    1.0000,
+     0.2424,    0.6875,    1.0000,
+     0.2222,    0.7500,    1.0000,
+     0.2051,    0.8125,    1.0000,
+     0.1667,    1.0000,    1.0000,
+     0.1563,    1.0000,    1.0000,
+     0.1458,    1.0000,    1.0000,
+     0.1354,    1.0000,    1.0000,
+     0.1250,    1.0000,    1.0000,
+     0.1146,    1.0000,    1.0000,
+     0.1042,    1.0000,    1.0000,
+     0.0938,    1.0000,    1.0000,
+     0.0833,    1.0000,    1.0000,
+     0.0729,    1.0000,    1.0000,
+     0.0625,    1.0000,    1.0000,
+     0.0521,    1.0000,    1.0000,
+     0.0417,    1.0000,    1.0000,
+     0.0313,    1.0000,    1.0000,
+     0.0208,    1.0000,    1.0000,
+     0.0104,    1.0000,    1.0000,
+          0,    1.0000,    1.0000,
+          0,    1.0000,    0.9375,
+          0,    1.0000,    0.8750,
+          0,    1.0000,    0.8125,
+          0,    1.0000,    0.7500,
+          0,    1.0000,    0.6875,
+          0,    1.0000,    0.6250,
+          0,    1.0000,    0.5625,
+          0,    1.0000,    0.5000];
+
+
+// Liste d'isovaleurs constantes d'une image Ã  l'autre
+int ni = 21;
+int mi = 21;
+real[int] ui(mi);
+real[int] vi(ni);
+for (int it=0; it<= ni - 1; it++)
+{
+	for (int j=0; j<= mi - 1; j++)
+	{
+		ui[j] = 0.05*j;
+	vi[it] = 0.1*it;//vi[it] = 0.18*it; best 
+	}
+}
+
+
+
+// Fixing parameters
+int nombredepas  = 50;
+real h = 40;
+real T = 5., dt = T/nombredepas, unsurdt = 1./dt;
+real d = 2,  mu = 0.3;
+real r = 1.,  e  = r/20.;
+real eps = 0.1;// 0.7 best
+// Geometry of the problem
+//border Keep1(t = 0,pi/6.){x = r*cos(t)	;y=r*sin(t)	;label=1;}
+//border Keep2(t = 0,pi/6.){x = (r+e)*cos(t)	;y=(r+e)*sin(t)	;label=2;}
+//border BigDisk(t = pi/6.,2*pi){x = (r+e)*cos(t)	;y=(r+e)*sin(t)	;label=3;}
+//border SmallDisk(t = pi/6.,2*pi)/h){x=r*cos(t)		;y=r*sin(t)	;label=4;}
+
+border c1(t=0,pi/h){x = r*cos(t)	;y = r*sin(t);label=1;}
+border c2(t=pi/h,2*pi){x = r*cos(t)	;y = r*sin(t);label=2;}
+border c1e(t=0,pi/h){x = (r+e)*cos(t)	;y = (r+e)*sin(t);label=3;}
+border c2e(t=pi/h,2*pi){x = (r+e)*cos(t)	;y = (r+e)*sin(t);label=4;}
+
+mesh UnitDisk	= buildmesh(c1(50)+c2(80) );
+mesh Ring	= buildmesh(c1e(80)+ c2e(80) + c1(-50) + c2(-80));
+mesh mixte	= Ring + UnitDisk;
+plot(mixte, wait=1);
+fespace Vh(Ring,P2);
+fespace Xh(UnitDisk,P3);
+
+//#####################################################################################
+// Initial condition
+//func real u0 (real x, real y)
+//{
+//	real theta = atan2(y,x)	;
+//        if (abs(x-1-e/2.) <= eps && x>0.9*cos(theta) && abs(y)<0.05 )  return 1.;
+  //      else return 0.;
+//}
+//func real u0 (real x, real y)
+//{
+//	int h = 6;
+//	real theta = atan2(y,x)	;
+//	if (theta >= 0 && theta <= pi/h)
+//	{
+//	
+//		if (x <= (1+e)*cos(theta) && x>=cos(theta))  return 1.;
+//		else return 0.;
+//	}
+//}
+//#############################################################################
+func real u0 (real x, real y)
+{
+	real theta = atan2(y,x)	;
+	if (theta >= 0 && theta <= pi/h) return 1.;
+	else return 0.;
+}
+
+func v0 = 0.;
+
+// Defining a macro: macro's definition always ends with "//"
+macro Grad(func) [dx(func),dy(func)]//
+
+// 1st equation of the system
+Vh up = u0(x,y), phi, u, f; // phi test function, up u previous, f right hand side
+u = up;
+problem heat1(u, phi) =
+			int2d(Ring)   ( unsurdt*u*phi  + Grad(u)'*Grad(phi) )
+			- int2d(Ring) ( unsurdt*up*phi + f*phi )
+			+ on(c1,c1e,u=1.)
+;
+
+// 2nd equation of the system
+Xh v, psi, vp, g; // psi test function, vp v previous, g right hand side
+vp = v0;
+v=vp;
+problem heat2(v, psi) =
+			int2d(UnitDisk)( unsurdt*v*psi  + mu*Grad(v)'*Grad(psi) )
+			- int1d(UnitDisk,c1,c2,c1e,c2e) ( up*psi )
+			- int2d(UnitDisk) ( unsurdt*vp*psi + g*psi )
+;
+string sortie,fichier="fig";
+sortie=fichier+"mesh.eps";plot(mixte,wait=0,ps=sortie);
+// Time loop
+for (int it=0; it<= nombredepas; it++)
+{
+        cout <<"----"<<endl;
+        cout <<"  Debut de la "<<it<<"e iteration"<<endl;
+        // Solve system
+        f = u*(1-u);
+        g = - d*v;
+	plot(u,v,wait=0, fill=1, dim=2, value=1,ps="res"+it+".eps", nbiso=ni,hsv=colormapHSVjet,viso=vi);
+	//, cmm="u   and   v   at   t = "+it
+        heat1;
+        heat2;
+        // Print values of u and v
+        //cout <<"  Fin de la "<<it<<"e iteration"<<endl;
+        //cout <<"  u varie entre "<<u[].min<<" et "<<u[].max<<endl;
+        //cout <<"  v varie entre "<<v[].min<<" et "<<v[].max<<endl;
+        //plot(u,v,wait=0, fill=1, dim=2, value=1, cmm="u and v at t="+it,ps="res"+it+".eps",nbiso=ni,hsv=colormapHSVjet,viso=vi);
+        // Swap values for the next iteratio
+        up[] = u[];
+        vp[] = v[];
+	savevtk("heat"+it+".vtk",UnitDisk,u,v);
+}
