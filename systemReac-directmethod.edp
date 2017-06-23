@@ -51,9 +51,9 @@ for (int it=0; it<= nombredepas; it++)
         cout <<"----"<<endl;
         cout <<"  Debut de la "<<it<<"e iteration"<<endl;
         // Solve system
-        f = u*(1-u)*(u-0.139);//-u*v;
+        f = u*(1-u);//*(u-0.139);//-u*v;
         g = 0.008*(u-gama*v);
-	plot(u,v,wait=0, fill=1, dim=2, value=1,ps="res"+it+".eps");
+	plot(u,wait=1, fill=1, dim=2, value=1,ps="res"+it+".eps");
 	//, cmm="u   and   v   at   t = "+it
         heat1;
         heat2;

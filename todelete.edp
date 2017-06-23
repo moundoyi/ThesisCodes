@@ -1,4 +1,4 @@
-/*This Program impliment the following PDE system
+/*Domainis Program impliment Domaine following PDE system
 { u_t - mu*Delta(u) = f(u,v)  (1),		f(u) = u(1-u)(u-a)-uv
 { v_t - mu*Delta(v) = g(u,v)  (2),	g(v) = beta*(u-gamma*v)
 */
@@ -8,19 +8,23 @@
 
 // Parameters-------########################################################
 int nombredepas  = 50;
-real T = 3., dt = T/nombredepas;
-real alpha = 0.139;
-real beta = 0.008;
+real mu =0.01;
 real gamma = 1.5;
-real r = 1.;
-real mu = 1.;
+real beta = 0.008;
+real alpha = 0.139;
+real T = 20, dt = T/nombredepas, unsurdt = 1./dt;
 //------------------#########################################################
 
 //Geometry----------############################################
-//border Disk(t = 0,2*pi){x = r*cos(t)	;y = r*sin(t)	;}
-//mesh Th = buildmesh(Disk(300));
-mesh Th = square(70,70);	
-fespace Vh(Th,P2);
+real longueur = 5;
+real largeur =2;
+border c1(t=0,1){x=longueur*t; y=0;label=1;};
+border c2(t=1,2){x=longueur; y=largeur*(t-1);label=2;};
+border c3(t=2,3){x=longueur-longueur*(t-2); y=largeur;label=3;};
+border c4(t=3,4){x=0; y=largeur-largeur*(t-3);label=4;};
+mesh Domain = buildmesh ( c1(100)+c2(80)+c3(100)+c4(80) ); 
+plot(Domain, wait=1);
+fespace Vh(Domain,P2);
 //------------------########################################################
 
 macro Grad(u) [dx(u),dy(u)]//	
@@ -36,9 +40,13 @@ macro Grad(u) [dx(u),dy(u)]//
 
 func real ini(real x, real y)
 {
-    real e = 0.05;
-    if (y <= e)
-         return 1;
+    real x1=0.4, x2=0.5, e=0.1;
+    if (x<=x2 && x>=x1 && y<= 0.01)
+        return 1;
+    if (x<x1 && x>x1-e && y<= 0.01)
+        return exp(-1/x^2)*exp(-1/(x-x1)^2);
+    if (x<x2+e && x>x2 && y<= 0.01)	
+        return 1-exp(-1/(x-x2)^2);
     else return 0;
 }
 //##########################################################
@@ -50,7 +58,7 @@ func v0 = 0.;
 //	if (abs(p)>= 0. && abs(p)<= pi/h && x>0.98) return 1.;
 //	else return 0.;	
 //}
-//Vh theta = atan2(y,x)	; 
+//Vh Domaineta = atan2(y,x)	; 
 Vh u,v,vp=v0	;
 //Vh up = U0(x,y);
 Vh up = ini(x,y);
@@ -58,11 +66,10 @@ Vh phi, psi;
 
 // Variational definitions-----------####################################
 
-//terms for the 1d matrix and the Rhs
-varf a(u,phi)	=	int2d(Th)( u*phi/dt + mu*(Grad(u)'*Grad(phi)))	;//Grad(u)'*Grad(phi)
-varf b1(up,phi)	= 	int2d(Th)( up*phi/dt)			;	
-varf b2(f,phi)	=	int2d(Th)( f*phi)			;
-varf b3(utv,phi)=	int2d(Th)(utv*phi)			;
+varf a(u,phi)	=	int2d(Domain)( u*phi/dt + mu*(Grad(u)'*Grad(phi)))	;
+varf b1(up,phi)	= 	int2d(Domain)( up*phi/dt)			;	
+varf b2(f,phi)	=	int2d(Domain)( f*phi)			;
+varf b3(utv,phi)=	int2d(Domain)(utv*phi)			;
  
 matrix A = a(Vh,Vh)  ;
 matrix B1= b1(Vh,Vh) ;
@@ -71,11 +78,10 @@ matrix B3= b3(Vh,Vh) ;
 
 
 
-//terms for the 2d matrix and the Rhs
-varf c(v,psi)		= int2d(Th)( v*psi/dt + mu*(Grad(v)'*Grad(psi)))  ;
-varf d1(vp,psi)		= int2d(Th)( vp*psi/dt)				  ;
-varf d2(g,psi)		= int2d(Th)( g*psi)				  ;
-varf Betu(s,phi)	= int1d(Th)( beta*s*phi)				  ;
+varf c(v,psi)		= int2d(Domain)( v*psi/dt + mu*(Grad(v)'*Grad(psi)))  ;
+varf d1(vp,psi)		= int2d(Domain)( vp*psi/dt)				  ;
+varf d2(g,psi)		= int2d(Domain)( g*psi)				  ;
+varf Betu(s,phi)	= int1d(Domain)( beta*s*phi)				  ;
 
 matrix	C	= c(Vh,Vh,solver=UMFPACK);
 matrix D1	= d1(Vh,Vh)		 ;
@@ -95,23 +101,23 @@ real[int] I(0:Vh.ndof-1); I=0		;
 // Time loop
 for(int it=0;it<nombredepas;++it)
 {
-	Vh g = -beta*gamma*v, f = u*(1-u);//*(u-alpha);//, utv = u*v;
+	Vh g = -beta*gamma*v, f = u*(1-u)*(u-alpha), utv = -u*v;
 	F	= B2*f[]		;
 	G	= D2*g[]		;
-//	I 	= B3*utv[]		;
+	I 	= B3*utv[]		;
 	real[int]B1u	= B1*up[]	;
 	real[int]D1v	= D1*vp[]	;
 	real[int]Nv	= N*up[]	;
 	
-	real[int]r1	= B1u		;r1 +=F;//r1 +=I ;
+	real[int]r1	= B1u		;r1 +=F;r1 +=I ;
 	real[int]r2	= D1v		;r2 +=G;r2 +=Nv; 
 	u[]	= A^-1*r1	;	v[]	 = C^-1*r2	;	
 	cout <<"  Fin de la "<<it<<"e iteration"<<endl;
         cout <<"  u varie entre "<<u[].min<<" et "<<u[].max<<endl;
         cout <<"  v varie entre "<<v[].min<<" et "<<v[].max<<endl;
-	plot(u,v,fill=1,value=1,wait=0, cmm="it="+it,ps="res"+it+".eps");
+	plot(u,fill=1,value=1,wait=0, cmm="it="+it,ps="res"+it+".eps");
 	up[]	= u[];
 	vp[]	= v[];
 	//cout << up[].max<< up[].min<<endl;
-	//savevtk("heat"+it+".vtk",Th,[u,v],u,v);
+	//savevtk("heat"+it+".vtk",Domain,[u,v],u,v);
 }
