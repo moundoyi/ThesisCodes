@@ -1,0 +1,75 @@
+int nombredepas  = 150;
+real mu =0.001;
+real gamma = 1.5;
+real beta = 0.008;
+real alpha = 0.139;
+real T = 300, dt = T/nombredepas, unsurdt = 1./dt;
+//-----#########################
+real longueur = 5;
+real largeur =4;
+border c1(t=0,1){x=longueur*t; y=0;label=1;};
+border c2(t=1,2){x=longueur; y=largeur*(t-1);label=2;};
+border c3(t=2,3){x=longueur-longueur*(t-2); y=largeur;label=3;};
+border c4(t=3,4){x=0; y=largeur-largeur*(t-3);label=4;};
+mesh Domain = buildmesh ( c1(50)+c2(20)+c3(50)+c4(20) ); 
+plot(Domain, wait=1);
+fespace Vh(Domain,P2);
+
+func real ini(real x, real y)
+{
+    real x1=2, x2=3, e=0.07;
+    if (x<=x2 && x>=x1 && y<= e)
+        return 1;
+    if (x<x1 && x>x1-e && y<= e)
+        return exp(-1/x^2)*exp(-1/(x-x1)^2);
+    if (x<x2+e && x>x2 && y<= e)	
+        return 1-exp(-1/(x-x2)^2);
+    else return 0;
+}
+
+func real u0(real x, real y)
+{
+    real e = 0.05;
+    if (y <= e)
+         return 1;
+    else return 0;
+}
+
+func v0=0.;
+
+macro Grad(func) [dx(func),dy(func)]//
+
+Vh up = ini(x,y), phi, u, f;
+u = up;
+problem heat1(u, phi) =
+			int2d(Domain)   ( unsurdt*u*phi  + mu*Grad(u)'*Grad(phi) )
+			- int2d(Domain) ( unsurdt*up*phi + f*phi )
+;
+
+
+
+Vh v, psi, vp, g;
+vp = v0;
+v=vp;
+problem heat2(v, psi) =
+			int2d(Domain)( unsurdt*v*psi  + mu*Grad(v)'*Grad(psi) )
+			- int2d(Domain) ( unsurdt*vp*psi + g*psi )
+;
+
+//string sortie,fichier="fig";
+//sortie=fichier+"mesh.eps";plot(Domain,wait=0,ps=sortie);
+// Time loop
+for (int it=0; it<= nombredepas; it++)
+{
+        cout <<"  Debut de la "<<it<<"e iteration"<<endl;
+        // Solve system
+	f = u*(1-u)*(u-alpha)-u*v;
+	g = beta*(u-gamma*v);
+	plot(u,wait=0, fill=1, dim=2, value=1);//ps="res"+it+".eps"
+	//savevtk("heat"+it+".vtk",Domain,[u,v],u,v);
+	//, cmm="u   and   v   at  t = "+it
+        heat1;
+	heat2;
+        up[] = u[];
+	vp[] = v[];
+}
